@@ -1,9 +1,10 @@
 (() => {
 	"use strict";
 
-	console.log("[Negative Filter] SCRIPT LOADED");
+	console.log("[Query Filter] SCRIPT LOADED");
 
 	let negativeTerms = [];
+	let positiveTerms = [];
 
 	function getSearchQuery() {
 		const params = new URLSearchParams(window.location.search);
@@ -28,14 +29,33 @@
 		return terms;
 	}
 
+	function extractPositiveTerms(query) {
+		const terms = [];
+
+		const regex = /"([^"]+)"/g;
+
+		let match;
+
+		while ((match = regex.exec(query)) !== null) {
+			const term = match[1].trim().toLowerCase();
+
+			if (term) {
+				terms.push(term);
+			}
+		}
+
+		return terms;
+	}
+
 	function setFilters() {
 		const query = getSearchQuery();
 
 		negativeTerms = extractNegativeTerms(query);
+		positiveTerms = extractPositiveTerms(query);
 
-		console.log("[Negative Filter] Search query:", query);
-
-		console.log("[Negative Filter] Negative terms:", negativeTerms);
+		console.log("[Query Filter] Search query:", query);
+		console.log("[Query Filter] Negative terms:", negativeTerms);
+		console.log("[Query Filter] Positive terms:", positiveTerms);
 	}
 
 	function getVideoTitle(result) {
@@ -47,12 +67,9 @@
 			return "";
 		}
 
-		// Prefer aria-label because it contains the complete title
-		// in the HTML you provided.
 		const ariaLabel = titleElement.getAttribute("aria-label");
 
 		if (ariaLabel) {
-			// Remove the duration if YouTube included it.
 			return ariaLabel
 				.replace(/\s+\d+\s+(seconds?|minutes?|hours?)$/i, "")
 				.trim()
@@ -62,13 +79,26 @@
 		return (titleElement.textContent || "").trim().toLowerCase();
 	}
 
-	/**
-	 * Checks if a video title contains any negative terms.
-	 * @param {string} title - The video title to check.
-	 * @returns {boolean} True if the title contains any negative terms, false otherwise.
-	 */
 	function matchesNegativeTerm(title) {
 		return negativeTerms.some((term) => title.includes(term));
+	}
+
+	function matchesPositiveTerms(title) {
+		if (positiveTerms.length === 0) {
+			return false;
+		}
+
+		return positiveTerms.every((term) => title.includes(term));
+	}
+
+	// Reset previous filter styling when a new search is performed
+	function resetVideoStyle(video) {
+		video.style.removeProperty("background-color");
+		video.style.removeProperty("border");
+		video.style.removeProperty("box-shadow");
+
+		video.removeAttribute("data-negative-filter-match");
+		video.removeAttribute("data-positive-filter-match");
 	}
 
 	// ------------------------------------------------------------
@@ -80,7 +110,7 @@
 			"ytd-item-section-renderer ytd-video-renderer",
 		);
 
-		console.log("[Negative Filter] Found video results:", results.length);
+		console.log("[Query Filter] Found video results:", results.length);
 
 		for (const video of results) {
 			const title = getVideoTitle(video);
@@ -89,16 +119,18 @@
 				continue;
 			}
 
-			const matches = matchesNegativeTerm(title);
+			resetVideoStyle(video);
+			const negativeMatch = matchesNegativeTerm(title);
+			const positiveMatch = matchesPositiveTerms(title);
 
-			if (matches) {
-				// ------------------------------------------------------
-				// DEBUG MODE
-				//
-				// DO NOT REMOVE THE VIDEO.
-				// Make the entire video component bright red.
-				// ------------------------------------------------------
+			// ------------------------------------------------------
+			// DEBUG MODE
+			//
+			// DO NOT REMOVE THE VIDEO.
+			// Make the entire video component bright red.
+			// ------------------------------------------------------
 
+			if (negativeMatch) {
 				video.style.setProperty("background-color", "#ff0000", "important");
 
 				video.style.setProperty("border", "6px solid #ff0000", "important");
@@ -107,7 +139,21 @@
 
 				video.setAttribute("data-negative-filter-match", "true");
 
-				console.log("[Negative Filter] MATCH:", title);
+				console.log("[Query Filter] NEGATIVE MATCH:", title);
+				continue;
+			}
+
+			// BLUE = inclusion term(s) found
+			if (positiveMatch) {
+				video.style.setProperty("background-color", "#008fc8", "important");
+
+				video.style.setProperty("border", "6px solid #008fc8", "important");
+
+				video.style.setProperty("box-shadow", "0 0 25px #008fc8", "important");
+
+				video.setAttribute("data-positive-filter-match", "true");
+
+				console.log("[Query Filter] POSITIVE MATCH:", title);
 			}
 		}
 	}
@@ -135,7 +181,7 @@
 		if (location.href !== lastUrl) {
 			lastUrl = location.href;
 
-			console.log("[Negative Filter] Search changed");
+			console.log("[Query Filter] Search changed");
 
 			setFilters();
 

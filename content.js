@@ -89,10 +89,6 @@
 		return terms;
 	}
 
-	// ------------------------------------------------------------
-	// Update search filters
-	// ------------------------------------------------------------
-
 	function setFilters() {
 		const query = getSearchQuery();
 
@@ -106,29 +102,14 @@
 		console.log("[Query Filter] Required terms:", requiredTerms);
 	}
 
-	// ------------------------------------------------------------
-	// Find the title inside one result
-	// ------------------------------------------------------------
-
+	/**
+	 * Gets the title of a video result element
+	 * @param {Element} result - The video result element
+	 * @returns {string} The video title
+	 */
 	function getVideoTitle(result) {
-		const titleElement = result.querySelector(
-			"ytd-video-renderer yt-formatted-string",
-		);
-
-		if (!titleElement) {
-			return "";
-		}
-
-		const ariaLabel = titleElement.getAttribute("aria-label");
-
-		if (ariaLabel) {
-			return ariaLabel
-				.replace(/\s+\d+\s+(seconds?|minutes?|hours?)$/i, "")
-				.trim()
-				.toLowerCase();
-		}
-
-		return (titleElement.textContent || "").trim().toLowerCase();
+		const titleElement = result.querySelector("#video-title");
+		return (titleElement?.textContent || "").trim().toLowerCase();
 	}
 
 	// ------------------------------------------------------------

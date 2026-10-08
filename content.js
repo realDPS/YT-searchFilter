@@ -1,25 +1,33 @@
+// about:debugging#/runtime/this-firefox
 (() => {
 	"use strict";
 
 	console.log("[Query Filter] SCRIPT LOADED");
 
 	let excludedTerms = [];
-	let HighlightTerms = [];
+	let includedTerms = [];
+	let requiredTerms = [];
 
 	function getSearchQuery() {
 		const params = new URLSearchParams(window.location.search);
 		return params.get("search_query") || "";
 	}
-
+	/**
+	 * Extracts excluded terms from a search query. Operator "-" indicates that the term should be excluded from results.
+	 * Supports both unquoted and double-quoted terms.
+	 * For example, the query: javascript tutorial -shorts -"crash course" would return ["shorts", "crash course"].
+	 * @param {string} query - The search query.
+	 * @returns {string[]} An array of excluded terms.
+	 */
 	function extractExcludedTerms(query) {
 		const terms = [];
 
-		const regex = /(?:^|\s)-(?:"([^"]+)"|'([^']+)'|(\S+))/g;
+		const regex = /(?:^|\s)-(?:"([^"]+)"|(\S+))/g;
 
 		let match;
 
 		while ((match = regex.exec(query)) !== null) {
-			const term = (match[1] || match[2] || match[3]).trim().toLowerCase();
+			const term = (match[1] || match[2]).trim().toLowerCase();
 
 			if (term) {
 				terms.push(term);
@@ -28,8 +36,14 @@
 
 		return terms;
 	}
+	/**
+	 * Extracts positive(soft inclusion) terms from a search query. operator "" indicates that the term should be included in results.
+	 * For example, the query: 'javascript tutorial' "typescript" would return ["javascript tutorial", "typescript"].
+	 * @param {string} query - The search query.
+	 * @returns {string[]} An array of positive terms.
+	 */
 
-	function extractHighlightTerms(query) {
+	function extractPositiveTerms(query) {
 		const terms = [];
 
 		const regex = /"([^"]+)"/g;
@@ -47,16 +61,54 @@
 		return terms;
 	}
 
+	/**
+	 * Extracts required terms from a search query. The "*" operator indicates that a term must be included in the video title.
+	 * Supports both unquoted and double-quoted terms.
+	 * For example:
+	 *   *swedish recipe                 → ["swedish"]
+	 *   *"swedish meatball"             → ["swedish meatball"]
+	 *   *"swedish meatball" *recipe     → ["swedish meatball", "recipe"]
+	 * @param {string} query - The search query.
+	 * @returns {string[]} An array of required terms.
+	 */
+	function extractRequiredTerms(query) {
+		const terms = [];
+
+		const regex = /(?:^|\s)\*(?:"([^"]+)"|(\S+))/g;
+
+		let match;
+
+		while ((match = regex.exec(query)) !== null) {
+			const term = (match[1] || match[2]).trim().toLowerCase();
+
+			if (term) {
+				terms.push(term);
+			}
+		}
+
+		return terms;
+	}
+
+	// ------------------------------------------------------------
+	// Update search filters
+	// ------------------------------------------------------------
+
 	function setFilters() {
 		const query = getSearchQuery();
 
 		excludedTerms = extractExcludedTerms(query);
-		HighlightTerms = extractHighlightTerms(query);
+		includedTerms = extractPositiveTerms(query);
+		requiredTerms = extractRequiredTerms(query);
 
 		console.log("[Query Filter] Search query:", query);
 		console.log("[Query Filter] Excluded terms:", excludedTerms);
-		console.log("[Query Filter] Highlight terms:", HighlightTerms);
+		console.log("[Query Filter] Positive terms:", includedTerms);
+		console.log("[Query Filter] Required terms:", requiredTerms);
 	}
+
+	// ------------------------------------------------------------
+	// Find the title inside one result
+	// ------------------------------------------------------------
 
 	function getVideoTitle(result) {
 		const titleElement = result.querySelector(
@@ -79,72 +131,94 @@
 		return (titleElement.textContent || "").trim().toLowerCase();
 	}
 
+	// ------------------------------------------------------------
+	// Check whether a title contains an excluded term
+	// ------------------------------------------------------------
+
 	function matchesExcludedTerm(title) {
 		return excludedTerms.some((term) => title.includes(term));
 	}
 
-	function matchesHighlightTerms(title) {
-		if (HighlightTerms.length === 0) {
+	// ------------------------------------------------------------
+	// Check whether a title contains ALL inclusion terms
+	// ------------------------------------------------------------
+
+	function matchesPositiveTerms(title) {
+		if (includedTerms.length === 0) {
 			return false;
 		}
 
-		return HighlightTerms.every((term) => title.includes(term));
+		return includedTerms.every((term) => title.includes(term));
 	}
 
 	// ------------------------------------------------------------
-	// Process every YouTube search result
+	// Check whether a title contains ALL required terms
+	//
+	// Every *term must appear in the title.
 	// ------------------------------------------------------------
 
-	function filterVideos() {
-		const results = document.querySelectorAll(
-			"ytd-item-section-renderer ytd-video-renderer",
-		);
+	function matchesRequiredTerms(title) {
+		if (requiredTerms.length === 0) {
+			return true;
+		}
 
-		console.log("[Query Filter] Found video results:", results.length);
+		return requiredTerms.every((term) => title.includes(term));
+	}
 
-		for (const video of results) {
-			const title = getVideoTitle(video);
+	const color = "#006F9F"; // Blue color for positive matches. alt: #075B7A
+	// ------------------------------------------------------------
+	//Single video filter
+	// ------------------------------------------------------------
+	function filterVideo(video) {
+		const title = getVideoTitle(video);
+		console.count("Single filter called");
+		if (!title) {
+			return;
+		}
 
-			if (!title) {
-				continue;
-			}
+		const excludedMatch = matchesExcludedTerm(title);
+		if (excludedMatch) {
+			video.style.setProperty("display", "none", "important");
+			video.setAttribute("data-excluded-filter-match", "true");
+			return;
+		}
 
-			const excludedMatch = matchesExcludedTerm(title);
-			const highlightMatch = matchesHighlightTerms(title);
+		const requiredMatch = matchesRequiredTerms(title);
+		if (!requiredMatch) {
+			video.style.setProperty("display", "none", "important");
+			video.setAttribute("data-required-filter-fail", "true");
+			return;
+		}
 
-			// ------------------------------------------------------
-			// HIDE = excluded term found
-
-			if (excludedMatch) {
-				video.style.setProperty("display", "none", "important");
-
-				video.setAttribute("data-excluded-filter-match", "true");
-
-				console.log("[Query Filter] HIDDEN:", title);
-				continue;
-			}
-
-			if (highlightMatch) {
-				video.style.setProperty("background-color", "#008fc8", "important");
-				video.style.setProperty("border", "6px solid #008fc8", "important");
-				video.style.setProperty("box-shadow", "0 0 25px #008fc8", "important");
-				video.setAttribute("data-highlight-filter-match", "true");
-
-				console.log("[Query Filter] HIGHLIGHT MATCH:", title);
-			}
+		const positiveMatch = matchesPositiveTerms(title);
+		if (positiveMatch) {
+			video.style.setProperty("background-color", color, "important");
+			video.style.setProperty("border", `6px solid ${color}`, "important");
+			video.style.setProperty("box-shadow", `0 0 25px ${color}`, "important");
+			video.style.setProperty("border-radius", "8px");
 		}
 	}
-
 	// ------------------------------------------------------------
 	// Watch for new videos being added
 	// ------------------------------------------------------------
 
-	const observer = new MutationObserver(() => {
-		clearTimeout(filterTimeout);
-		// Debounce the filtering to avoid excessive calls during rapid DOM changes
-		filterTimeout = setTimeout(() => {
-			filterVideos();
-		}, 500);
+	const observer = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			for (const node of mutation.addedNodes) {
+				if (node.nodeType !== Node.ELEMENT_NODE) {
+					continue;
+				}
+
+				if (node.matches("ytd-video-renderer")) {
+					filterVideo(node);
+				}
+
+				// const videos = node.querySelectorAll("ytd-video-renderer");
+				// for (const video of videos) {
+				// 	filterVideo(video);
+				// }
+			}
+		}
 	});
 
 	observer.observe(document.body, {
@@ -153,30 +227,8 @@
 	});
 
 	// ------------------------------------------------------------
-	// Detect URL changes
-	// ------------------------------------------------------------
-
-	let lastUrl = location.href;
-
-	setInterval(() => {
-		if (location.href !== lastUrl) {
-			lastUrl = location.href;
-
-			console.log("[Query Filter] Search changed");
-
-			setFilters();
-
-			// Wait briefly for YouTube to construct
-			// the new result components.
-			setTimeout(filterVideos, 500);
-		}
-	}, 500);
-
-	// ------------------------------------------------------------
 	// Initial execution
 	// ------------------------------------------------------------
 
 	setFilters();
-
-	setTimeout(filterVideos, 1000);
 })();

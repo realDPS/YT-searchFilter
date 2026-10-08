@@ -1,0 +1,13 @@
+{
+	"manifest_version": 3,
+	"name": "YouTube Search Filter",
+	"version": "1.0.0",
+	"description": "Add query controls to YouTube search results for better filtering and highlighting.",
+	"content_scripts": [
+		{
+			"matches": ["*://www.youtube.com/results*"],
+			"js": ["content.js"],
+			"run_at": "document_idle"
+		}
+	]
+}

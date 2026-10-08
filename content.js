@@ -113,16 +113,11 @@
 	}
 
 	// ------------------------------------------------------------
-	// Check whether a title contains an excluded term
-	// ------------------------------------------------------------
+	// Matches functions
 
 	function matchesExcludedTerm(title) {
 		return excludedTerms.some((term) => title.includes(term));
 	}
-
-	// ------------------------------------------------------------
-	// Check whether a title contains ALL inclusion terms
-	// ------------------------------------------------------------
 
 	function matchesPositiveTerms(title) {
 		if (includedTerms.length === 0) {
@@ -132,12 +127,12 @@
 		return includedTerms.every((term) => title.includes(term));
 	}
 
-	// ------------------------------------------------------------
-	// Check whether a title contains ALL required terms
-	//
-	// Every *term must appear in the title.
-	// ------------------------------------------------------------
-
+	/**
+	 * Checks whether a video title contains all required terms
+	 * Every "*" term must appear in the title
+	 * @param {string} title - The video title
+	 * @returns {boolean} Whether the title contains all required terms
+	 */
 	function matchesRequiredTerms(title) {
 		if (requiredTerms.length === 0) {
 			return true;
@@ -145,11 +140,14 @@
 
 		return requiredTerms.every((term) => title.includes(term));
 	}
-
-	const color = "#006F9F"; // Blue color for positive matches. alt: #075B7A
+	// End Matches functions
 	// ------------------------------------------------------------
-	//Single video filter
 	// ------------------------------------------------------------
+	const color = "#006F9F"; // alt: #075B7A
+	/**
+	 * Filters a video result element based on the search query terms
+	 * @param {Element} video - The video result element
+	 */
 	function filterVideo(video) {
 		const title = getVideoTitle(video);
 		console.count("Single filter called");

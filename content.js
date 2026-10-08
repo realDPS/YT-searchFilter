@@ -3,15 +3,15 @@
 
 	console.log("[Query Filter] SCRIPT LOADED");
 
-	let negativeTerms = [];
-	let positiveTerms = [];
+	let excludedTerms = [];
+	let HighlightTerms = [];
 
 	function getSearchQuery() {
 		const params = new URLSearchParams(window.location.search);
 		return params.get("search_query") || "";
 	}
 
-	function extractNegativeTerms(query) {
+	function extractExcludedTerms(query) {
 		const terms = [];
 
 		const regex = /(?:^|\s)-(?:"([^"]+)"|'([^']+)'|(\S+))/g;
@@ -29,7 +29,7 @@
 		return terms;
 	}
 
-	function extractPositiveTerms(query) {
+	function extractHighlightTerms(query) {
 		const terms = [];
 
 		const regex = /"([^"]+)"/g;
@@ -50,12 +50,12 @@
 	function setFilters() {
 		const query = getSearchQuery();
 
-		negativeTerms = extractNegativeTerms(query);
-		positiveTerms = extractPositiveTerms(query);
+		excludedTerms = extractExcludedTerms(query);
+		HighlightTerms = extractHighlightTerms(query);
 
 		console.log("[Query Filter] Search query:", query);
-		console.log("[Query Filter] Negative terms:", negativeTerms);
-		console.log("[Query Filter] Positive terms:", positiveTerms);
+		console.log("[Query Filter] Excluded terms:", excludedTerms);
+		console.log("[Query Filter] Highlight terms:", HighlightTerms);
 	}
 
 	function getVideoTitle(result) {
@@ -79,26 +79,16 @@
 		return (titleElement.textContent || "").trim().toLowerCase();
 	}
 
-	function matchesNegativeTerm(title) {
-		return negativeTerms.some((term) => title.includes(term));
+	function matchesExcludedTerm(title) {
+		return excludedTerms.some((term) => title.includes(term));
 	}
 
-	function matchesPositiveTerms(title) {
-		if (positiveTerms.length === 0) {
+	function matchesHighlightTerms(title) {
+		if (HighlightTerms.length === 0) {
 			return false;
 		}
 
-		return positiveTerms.every((term) => title.includes(term));
-	}
-
-	// Reset previous filter styling when a new search is performed
-	function resetVideoStyle(video) {
-		video.style.removeProperty("background-color");
-		video.style.removeProperty("border");
-		video.style.removeProperty("box-shadow");
-
-		video.removeAttribute("data-negative-filter-match");
-		video.removeAttribute("data-positive-filter-match");
+		return HighlightTerms.every((term) => title.includes(term));
 	}
 
 	// ------------------------------------------------------------
@@ -119,41 +109,28 @@
 				continue;
 			}
 
-			resetVideoStyle(video);
-			const negativeMatch = matchesNegativeTerm(title);
-			const positiveMatch = matchesPositiveTerms(title);
+			const excludedMatch = matchesExcludedTerm(title);
+			const highlightMatch = matchesHighlightTerms(title);
 
 			// ------------------------------------------------------
-			// DEBUG MODE
-			//
-			// DO NOT REMOVE THE VIDEO.
-			// Make the entire video component bright red.
-			// ------------------------------------------------------
+			// HIDE = excluded term found
 
-			if (negativeMatch) {
-				video.style.setProperty("background-color", "#ff0000", "important");
+			if (excludedMatch) {
+				video.style.setProperty("display", "none", "important");
 
-				video.style.setProperty("border", "6px solid #ff0000", "important");
+				video.setAttribute("data-excluded-filter-match", "true");
 
-				video.style.setProperty("box-shadow", "0 0 25px #ff0000", "important");
-
-				video.setAttribute("data-negative-filter-match", "true");
-
-				console.log("[Query Filter] NEGATIVE MATCH:", title);
+				console.log("[Query Filter] HIDDEN:", title);
 				continue;
 			}
 
-			// BLUE = inclusion term(s) found
-			if (positiveMatch) {
+			if (highlightMatch) {
 				video.style.setProperty("background-color", "#008fc8", "important");
-
 				video.style.setProperty("border", "6px solid #008fc8", "important");
-
 				video.style.setProperty("box-shadow", "0 0 25px #008fc8", "important");
+				video.setAttribute("data-highlight-filter-match", "true");
 
-				video.setAttribute("data-positive-filter-match", "true");
-
-				console.log("[Query Filter] POSITIVE MATCH:", title);
+				console.log("[Query Filter] HIGHLIGHT MATCH:", title);
 			}
 		}
 	}
@@ -163,7 +140,11 @@
 	// ------------------------------------------------------------
 
 	const observer = new MutationObserver(() => {
-		filterVideos();
+		clearTimeout(filterTimeout);
+		// Debounce the filtering to avoid excessive calls during rapid DOM changes
+		filterTimeout = setTimeout(() => {
+			filterVideos();
+		}, 500);
 	});
 
 	observer.observe(document.body, {
@@ -172,7 +153,7 @@
 	});
 
 	// ------------------------------------------------------------
-	// Detect URL changes.
+	// Detect URL changes
 	// ------------------------------------------------------------
 
 	let lastUrl = location.href;

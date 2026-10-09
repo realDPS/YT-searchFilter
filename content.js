@@ -2,7 +2,7 @@
 (() => {
 	"use strict";
 
-	console.log("[Query Filter] SCRIPT LOADED");
+	console.log("CUSTOM QUERY SCRIPT LOADED");
 
 	let excludedTerms = [];
 	let includedTerms = [];
@@ -38,7 +38,7 @@
 	}
 	/**
 	 * Extracts positive(soft inclusion) terms from a search query. operator "" indicates that the term should be included in results.
-	 * For example, the query: 'javascript tutorial' "typescript" would return ["javascript tutorial", "typescript"].
+	 * For example, the query: javascript tutorial "15 MINS" "typescript" would return ["15 mins", "typescript"].
 	 * @param {string} query - The search query.
 	 * @returns {string[]} An array of positive terms.
 	 */
@@ -63,11 +63,13 @@
 
 	/**
 	 * Extracts required terms from a search query. The "*" operator indicates that a term must be included in the video title.
+	 * If a video title does not contain all required terms, it will be filtered out.
 	 * Supports both unquoted and double-quoted terms.
 	 * For example:
-	 *   *swedish recipe                 → ["swedish"]
-	 *   *"swedish meatball"             → ["swedish meatball"]
-	 *   *"swedish meatball" *recipe     → ["swedish meatball", "recipe"]
+	 *   easy *swedish *recipe = ["swedish", "recipe"]
+	 *   *"swedish meatball" =["swedish meatball"]
+	 *
+	 * The second example will match only if the title contains the exact phrase order "swedish meatball"
 	 * @param {string} query - The search query.
 	 * @returns {string[]} An array of required terms.
 	 */
@@ -93,13 +95,14 @@
 		const query = getUrlQuery();
 
 		excludedTerms = extractExcludedTerms(query);
-		includedTerms = extractPositiveTerms(query);
+		// includedTerms = extractPositiveTerms(query);
 		requiredTerms = extractRequiredTerms(query);
 
-		console.log("[Query Filter] Search query:", query);
-		console.log("[Query Filter] Excluded terms:", excludedTerms);
-		console.log("[Query Filter] Positive terms:", includedTerms);
-		console.log("[Query Filter] Required terms:", requiredTerms);
+		console.log("-----------------------------");
+		console.log("Search query:", query);
+		console.log("Excluded terms:", excludedTerms);
+		console.log("Required terms:", requiredTerms);
+		console.log("-----------------------------");
 	}
 
 	/**
@@ -143,7 +146,7 @@
 	// End Matches functions
 	// ------------------------------------------------------------
 	//
-	const color = "#006F9F"; // alt: #075B7A
+
 	/**
 	 * Filters a video result element based on the search query terms
 	 * @param {Element} video - The video result element
@@ -169,8 +172,9 @@
 			return;
 		}
 
-		const positiveMatch = matchesPositiveTerms(title);
-		if (positiveMatch) {
+		// const positiveMatch = matchesPositiveTerms(title);
+		if (false) {
+			const color = "#006F9F"; // alt: #075B7A
 			video.style.setProperty("background-color", color, "important");
 			video.style.setProperty("border", `6px solid ${color}`, "important");
 			video.style.setProperty("box-shadow", `0 0 25px ${color}`, "important");
@@ -198,6 +202,11 @@
 	observer.observe(document.body, {
 		childList: true,
 		subtree: true,
+	});
+
+	document.addEventListener("yt-navigate-finish", () => {
+		console.log("YouTube finished navigating to a new page");
+		setFilters();
 	});
 
 	// ------------------------------------------------------------

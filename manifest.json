@@ -5,7 +5,7 @@
 	"description": "Add query controls to YouTube search results for better filtering and highlighting.",
 	"content_scripts": [
 		{
-			"matches": ["*://www.youtube.com/results*"],
+			"matches": ["*://www.youtube.com/*"],
 			"js": ["content.js"],
 			"run_at": "document_idle"
 		}

@@ -8,7 +8,7 @@
 	let includedTerms = [];
 	let requiredTerms = [];
 
-	function getSearchQuery() {
+	function getUrlQuery() {
 		const params = new URLSearchParams(window.location.search);
 		return params.get("search_query") || "";
 	}
@@ -90,7 +90,7 @@
 	}
 
 	function setFilters() {
-		const query = getSearchQuery();
+		const query = getUrlQuery();
 
 		excludedTerms = extractExcludedTerms(query);
 		includedTerms = extractPositiveTerms(query);
@@ -142,7 +142,7 @@
 	}
 	// End Matches functions
 	// ------------------------------------------------------------
-	// ------------------------------------------------------------
+	//
 	const color = "#006F9F"; // alt: #075B7A
 	/**
 	 * Filters a video result element based on the search query terms
@@ -191,11 +191,6 @@
 				if (node.matches("ytd-video-renderer")) {
 					filterVideo(node);
 				}
-
-				// const videos = node.querySelectorAll("ytd-video-renderer");
-				// for (const video of videos) {
-				// 	filterVideo(video);
-				// }
 			}
 		}
 	});

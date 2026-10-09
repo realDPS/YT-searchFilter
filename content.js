@@ -5,7 +5,7 @@
 	console.log("CUSTOM QUERY SCRIPT LOADED");
 
 	let excludedTerms = [];
-	let includedTerms = [];
+	let highlightTerms = [];
 	let requiredTerms = [];
 
 	function getUrlQuery() {
@@ -37,13 +37,13 @@
 		return terms;
 	}
 	/**
-	 * Extracts positive(soft inclusion) terms from a search query. operator "" indicates that the term should be included in results.
+	 * Extracts highlight terms from a search query. operator "" indicates that the term should be highlighted in results.
 	 * For example, the query: javascript tutorial "15 MINS" "typescript" would return ["15 mins", "typescript"].
 	 * @param {string} query - The search query.
-	 * @returns {string[]} An array of positive terms.
+	 * @returns {string[]} An array of highlight terms.
 	 */
 
-	function extractPositiveTerms(query) {
+	function extractHighlightTerms(query) {
 		const terms = [];
 
 		const regex = /"([^"]+)"/g;
@@ -95,7 +95,7 @@
 		const query = getUrlQuery();
 
 		excludedTerms = extractExcludedTerms(query);
-		// includedTerms = extractPositiveTerms(query);
+		// highlightTerms = extractHighlightTerms(query);
 		requiredTerms = extractRequiredTerms(query);
 
 		console.log("-----------------------------");
@@ -122,12 +122,12 @@
 		return excludedTerms.some((term) => title.includes(term));
 	}
 
-	function matchesPositiveTerms(title) {
-		if (includedTerms.length === 0) {
+	function matchesHighlightTerms(title) {
+		if (highlightTerms.length === 0) {
 			return false;
 		}
 
-		return includedTerms.every((term) => title.includes(term));
+		return highlightTerms.every((term) => title.includes(term));
 	}
 
 	/**
@@ -153,7 +153,7 @@
 	 */
 	function filterVideo(video) {
 		const title = getVideoTitle(video);
-		console.count("Single filter called");
+		// console.count("Single filter called");
 		if (!title) {
 			return;
 		}
@@ -172,7 +172,7 @@
 			return;
 		}
 
-		// const positiveMatch = matchesPositiveTerms(title);
+		// const highlightMatch = matchesHighlightTerms(title);
 		if (false) {
 			const color = "#006F9F"; // alt: #075B7A
 			video.style.setProperty("background-color", color, "important");

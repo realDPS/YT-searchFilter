@@ -186,6 +186,11 @@
 	// ------------------------------------------------------------
 
 	const observer = new MutationObserver((mutations) => {
+		if (location.pathname !== "/results") {
+			// console.log("Not on YouTube search results page, skipping filter.");
+			return;
+		}
+
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node.nodeType !== Node.ELEMENT_NODE) {
@@ -205,13 +210,11 @@
 	});
 
 	document.addEventListener("yt-navigate-finish", () => {
-		console.log("YouTube finished navigating to a new page");
+		// console.log("YouTube navigation completed");
 		setFilters();
 	});
 
 	// ------------------------------------------------------------
 	// Initial execution
-	// ------------------------------------------------------------
-
-	setFilters();
+	//...
 })();
